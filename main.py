@@ -1,13 +1,13 @@
 import numpy as np
 import torch
-import gym
+import gymnasium as gym
 import argparse
 import os
 
-import utils
-import TD3
-import OurDDPG
-import DDPG
+import model.TD3.utils as utils
+import model.TD3.TD3 as TD3
+import model.TD3.OurDDPG as OurDDPG
+import model.TD3.DDPG as DDPG
 
 
 # Runs policy for X episodes and returns average reward
