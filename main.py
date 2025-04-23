@@ -18,19 +18,31 @@ def eval_policy(policy, env_name, eval_episodes=20):
 	eval_env = gym.make(env_name)
 
 	avg_reward = 0.
+	pot_reward = 0.
+	height_reward = 0.
+	collision_reward = 0.
+	control_reward = 0.
 	for _ in range(eval_episodes):
 		state, done = eval_env.reset()[0], False
 		while not done:
 			action = policy.select_action(np.array(state))
 			state, reward, done, info = eval_env.step(action)
 			avg_reward += reward
+			pot_reward += info['reach']['pot_reach']
+			height_reward += info['reach']['eef_height']
+			collision_reward += info['collision']
+			control_reward += info['control']
 
 	avg_reward /= eval_episodes
+	pot_reward /= eval_episodes
+	height_reward /= eval_episodes
+	collision_reward /= eval_episodes
+	control_reward /= eval_episodes
 
 	print("---------------------------------------")
 	print(f"Evaluation over {eval_episodes} episodes: {avg_reward:.3f}")
 	print("---------------------------------------")
-	return avg_reward
+	return avg_reward, pot_reward, height_reward, collision_reward, control_reward
 
 
 if __name__ == "__main__":
@@ -90,7 +102,8 @@ if __name__ == "__main__":
 		replay_buffer = td3_utils.ReplayBuffer(state_dim, action_dim, max_size=int(params.training_params.buffer_size))
 		
 		# Evaluate untrained policy
-		evaluations = [eval_policy(policy, params.env.env_name)]
+		avg_rwd, pot_rwd, hght_rwd, col_rwd, ctrl_rwd = eval_policy(policy, params.env.env_name)
+		eval_avg, eval_pot, eval_hght, eval_col, eval_ctrl = [avg_rwd], [pot_rwd], [hght_rwd], [col_rwd], [ctrl_rwd]
 
 		state, done = env.reset()[0], False
 		episode_reward = 0
@@ -134,6 +147,22 @@ if __name__ == "__main__":
 
 			# Evaluate episode
 			if (t + 1) % params.training_params.eval_freq == 0:
-				evaluations.append(eval_policy(policy, params.env.env_name))
-				np.save(f"./rslts/{file_name}", evaluations)
-				if params.training_params.save_model: policy.save(f"./saved_models/{file_name}")
+				avg_rwd, pot_rwd, hght_rwd, col_rwd, ctrl_rwd = eval_policy(policy, params.env.env_name)
+				eval_avg.append(avg_rwd)
+				eval_pot.append(pot_rwd)
+				eval_hght.append(hght_rwd)
+				eval_col.append(col_rwd)
+				eval_ctrl.append(ctrl_rwd)
+				# Save model
+				if not os.path.exists(f"./rslts/{file_name}"):
+					os.makedirs(f"./rslts/{file_name}")
+				np.save(f"./rslts/{file_name}/{file_name}_avg_rwd", eval_avg)
+				np.save(f"./rslts/{file_name}/{file_name}_pot_rwd", eval_pot)
+				np.save(f"./rslts/{file_name}/{file_name}_hght_rwd", eval_hght)
+				np.save(f"./rslts/{file_name}/{file_name}_col_rwd", eval_col)
+				np.save(f"./rslts/{file_name}/{file_name}_ctrl_rwd", eval_ctrl)
+
+				if params.training_params.save_model:
+					if not os.path.exists(f"./saved_models/{file_name}"):
+						os.makedirs(f"./saved_models/{file_name}")
+					policy.save(f"./saved_models/{file_name}/{file_name}")
