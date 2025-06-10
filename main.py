@@ -47,7 +47,7 @@ def eval_policy(policy, env_name, eval_episodes=20):
 
 if __name__ == "__main__":
 	
-	params_list = ['params/reach_td3_params.json']
+	params_list = ['params/simple_reach_td3_params.json']
 	for params_fname in params_list:
 		params = TrainingParams(training_params_fname=params_fname, train=True)
 
