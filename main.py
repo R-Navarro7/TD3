@@ -7,7 +7,7 @@ import model.TD3.td3_utils as td3_utils
 import model.TD3.TD3 as TD3
 import model.TD3.OurDDPG as OurDDPG
 import model.TD3.DDPG as DDPG
-from utils.training_params import TrainingParams
+from utils.params import Params
 from utils.register import register_envs
 
 
