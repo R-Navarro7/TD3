@@ -9,13 +9,13 @@ import model.TD3.OurDDPG as OurDDPG
 import model.TD3.DDPG as DDPG
 from utils.params import Params
 from utils.register import register_envs
-
+from env.mujoco.simple_reach_env import SimpleManipulationReachEnv
 
 
 # Runs policy for X episodes and returns average reward
 # A fixed seed is used for the eval environment
 def eval_policy(policy, env_name, eval_episodes=20):
-	eval_env = gym.make(env_name)
+	eval_env = SimpleManipulationReachEnv()
 
 	avg_reward = 0.
 	pot_reward = 0.
@@ -24,9 +24,11 @@ def eval_policy(policy, env_name, eval_episodes=20):
 	control_reward = 0.
 	for _ in range(eval_episodes):
 		state, done = eval_env.reset()[0], False
+		state = eval_env.normalize_observation(state)
 		while not done:
 			action = policy.select_action(np.array(state))
 			state, reward, done, info = eval_env.step(action)
+			state = eval_env.normalize_observation(state)
 			avg_reward += reward
 			pot_reward += info['reach']['pot_reach']
 			height_reward += info['reach']['eef_height']
@@ -49,7 +51,7 @@ if __name__ == "__main__":
 	
 	params_list = ['params/simple_reach_td3_params.json']
 	for params_fname in params_list:
-		params = TrainingParams(training_params_fname=params_fname, train=True)
+		params = Params(training_params_fname=params_fname, train=True)
 
 		file_name = f"{params.training_params.policy}_{params.env.env_name}_{params.seed}"
 		print("---------------------------------------")
@@ -61,10 +63,7 @@ if __name__ == "__main__":
 		if params.training_params.save_model and not os.path.exists("./saved_models"):
 			os.makedirs("./saved_models")
 
-		# Register custom environment
-		register_envs(params.env.env_name)
-		# Create environment
-		env = gym.make(params.env.env_name)
+		env = SimpleManipulationReachEnv()
 
 		# Set seeds
 		env.action_space.seed(params.seed)
@@ -74,6 +73,7 @@ if __name__ == "__main__":
 		state_dim = env.observation_space.shape[0]
 		action_dim = env.action_space.shape[0] 
 		max_action = float(env.action_space.high[0])
+		print(f"State dim: {state_dim}, Action dim: {action_dim}, Max action: {max_action}")
 
 		kwparams = {
 			"state_dim": state_dim,
@@ -106,6 +106,7 @@ if __name__ == "__main__":
 		eval_avg, eval_pot, eval_hght, eval_col, eval_ctrl = [avg_rwd], [pot_rwd], [hght_rwd], [col_rwd], [ctrl_rwd]
 
 		state, done = env.reset()[0], False
+		state = env.normalize_observation(state)
 		episode_reward = 0
 		episode_timesteps = 0
 		episode_num = 0
@@ -129,7 +130,7 @@ if __name__ == "__main__":
 			# Store data in replay buffer
 			replay_buffer.add(state, action, next_state, reward, done_bool)
 
-			state = next_state
+			state = env.normalize_observation(next_state)
 			episode_reward += reward
 
 			# Train agent after collecting sufficient data
